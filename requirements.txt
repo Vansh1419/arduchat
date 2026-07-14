@@ -1,3 +1,12 @@
 ipykernel
+dotenv
 bs4
 requests
+langchain
+langchain-huggingface
+langchain-groq
+sentence-transformers
+langchain-core
+langchain-community
+jq
+chromadb
