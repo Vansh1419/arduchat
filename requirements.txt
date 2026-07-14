@@ -10,3 +10,7 @@ langchain-core
 langchain-community
 jq
 chromadb
+fastapi
+uvicorn
+streamlit
+langchain-text-splitters
