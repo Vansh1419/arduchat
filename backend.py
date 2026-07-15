@@ -54,7 +54,7 @@ embedding = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-LINKS_JSON_PATH = "../web-crawller/links_result_deduped.json"
+LINKS_JSON_PATH = "./web-crawller/links_result_deduped.json"
 
 # link-only vectordb: page_content of each doc IS the url string
 json_data = JSONLoader(
@@ -394,4 +394,5 @@ def chat(req: ChatRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
