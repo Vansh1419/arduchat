@@ -37,8 +37,13 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # --------------------------------------------------------------------------
-# ORIGINAL NOTEBOOK LOGIC (unmodified)
+# CORE RAG LOGIC (ported from the updated notebook)
 # --------------------------------------------------------------------------
+
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+from langchain_core.documents import Document
 
 llm = ChatGroq(
     model="qwen/qwen3-32b",
@@ -51,12 +56,7 @@ embedding = HuggingFaceEmbeddings(
 
 LINKS_JSON_PATH = "../web-crawller/links_result_deduped.json"
 
-# Helper to extract the URL into document metadata
-def extract_metadata(record: dict, metadata: dict) -> dict:
-    # Adjust "url" if your JSON key is named differently (e.g., "link" or "source")
-    metadata["url"] = record.get("url") 
-    return metadata
-
+# link-only vectordb: page_content of each doc IS the url string
 json_data = JSONLoader(
     LINKS_JSON_PATH,
     jq_schema=".[]",
@@ -69,68 +69,125 @@ links_vector_db = Chroma.from_documents(
 )
 link_retriever = links_vector_db.as_retriever()
 
-prompt = PromptTemplate.from_template("""
-You are a senior drone engineer and you are mentoring the juniors on the Ardupilot Copter documentation. 
+# --- tag extraction prompt/chain (replaces old loose keyword prompt) ---
+tags_prompt = PromptTemplate.from_template("""
+You are a senior ArduPilot Copter engineer building search queries for a documentation retriever.
 
-Here is the junior question : {question},
+Given a junior engineer's question, extract 1-3 keywords/phrases that maximize retrieval accuracy against ArduPilot Copter docs.
 
-now your task is to give set of keywords so that retriever can easily find the links that may be necessary for the answering the questions
-Just give a array, donot give any thing else
+Rules:
+- Use exact ArduPilot terminology (parameter names like ATC_RAT_RLL_P, mode names like AUTO/LOITER/RTL, component names like EKF3, GPS, compass, ESC).
+- Include the specific subsystem/feature (e.g. "geofence", "failsafe", "PID tuning", "motor output").
+- Include synonyms only if they map to different doc sections (e.g. "compass calibration" AND "magnetometer calibration").
+- Expand acronyms once if the full term aids retrieval (e.g. "EKF" -> also include "Extended Kalman Filter").
+- Exclude generic filler words (drone, help, how, issue, problem).
+- Order keywords from most specific to most general.
+- Output ONLY a JSON array of strings. No explanation, no markdown, no preamble.
+
+Question: {question}
+
+Output:
 """)
 
-chain_keyword = prompt | llm
-
-already_fetched_urls = set()
-url_to_be_searched = []
+tags_chain = tags_prompt | llm
 
 
-def add_retrieved_urls(new_urls):
-    global url_to_be_searched
-    url_to_be_searched = [u for u in new_urls if u not in already_fetched_urls]
+def weighted_query(tags):
+    weighted = []
+    for i, tag in enumerate(tags):
+        weight = len(tags) - i  # first tag gets highest repeat count
+        weighted.extend([tag] * weight)
+    return " ".join(weighted)
 
 
-def mark_as_fetched():
-    already_fetched_urls.update(url_to_be_searched)
+def retrieved_question_links(question, decay=0.5):
+    """tags -> decayed similarity search against link_retriever -> ranked url docs."""
+    tags_msg = tags_chain.invoke(question)
+    tags = eval(tags_msg.content) if hasattr(tags_msg, "content") else tags_msg
+
+    scored_docs = {}
+    for i, tag in enumerate(tags):
+        weight = decay ** i  # 1.0, 0.5, 0.25, ...
+        results = link_retriever.vectorstore.similarity_search_with_score(tag, k=5)
+        for doc, score in results:
+            key = doc.page_content  # the url
+            weighted_score = score * (1 / weight) if weight else score
+            if key not in scored_docs or weighted_score < scored_docs[key][1]:
+                scored_docs[key] = (doc, weighted_score)
+
+    ranked = sorted(scored_docs.values(), key=lambda x: x[1])
+    return [doc for doc, _ in ranked]
 
 
-# empty seed vectordb for the docs that get scraped on-demand.
-# `main_retriever` is the SINGLE retriever used for the whole web app.
+def _is_valid_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def get_new_urls(retrieved_docs, already_fetched_links):
+    seen = set(already_fetched_links)
+    final_urls_for_data_loading = []
+    for doc in retrieved_docs:
+        url = doc.page_content
+        # link_retriever's vectordb can contain non-url text (titles, snippets,
+        # bad rows in links_result_deduped.json) — skip anything that isn't
+        # actually a fetchable http(s) url instead of crashing WebBaseLoader.
+        if url and _is_valid_url(url) and url not in seen:
+            final_urls_for_data_loading.append(url)
+            seen.add(url)
+    return final_urls_for_data_loading
+
+
+already_fetched_links = []
+retrieved_links = []  # links from the most recent retrieval (used as "already_visited")
+
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
-_seed_doc = json_data[0]
-vectordb = Chroma.from_documents(documents=[_seed_doc], embedding=embedding)
+# empty content vectordb, populated on-demand as pages are scraped.
+# `main_retriever` is the SINGLE retriever used for answering (docs' content, not links).
+vectordb = Chroma(collection_name="main_docs", embedding_function=embedding)
 main_retriever = vectordb.as_retriever()
 
+# --- parameter whitelist retriever (prevents the LLM from inventing param names) ---
+PARAMETERS_URL = "https://ardupilot.org/copter/docs/parameters.html"
+
+resp = requests.get(PARAMETERS_URL)
+resp.encoding = "utf-8"  # fixes the mojibake from wrong auto-detected encoding
+soup = BeautifulSoup(resp.text, "html.parser")
+h3_tags = [h3.get_text(strip=True).replace("\u00b6", "").strip() for h3 in soup.find_all("h3")]
+
+param_docs = [Document(page_content=p) for p in h3_tags]
+param_vectordb = Chroma.from_documents(param_docs, embedding=embedding)
+param_retriever = param_vectordb.as_retriever(search_kwargs={"k": 15})
+
 prompt2 = ChatPromptTemplate.from_messages([
-    ("system", "Answer the question using the context below.\n\nContext:\n{context}. In case, if you provide a link make sure it is a working link and from either {already_visited} or {retrieved_links}"),
+    ("system",
+     "Answer the question using the context below.\n\nContext:\n{context}. Links in the answer should strictly from {already_visited}. "
+     "Any ArduPilot parameter you mention must come strictly from this list — do not invent or alter parameter names, "
+     "and if none of these fit, don't mention a parameter at all:\n{valid_params}"),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{question}")
 ])
 
 
 def _run_keyword_and_scrape(question: str):
-    """Same steps as the notebook cells: get keywords -> retrieve links ->
-    scrape any new ones -> split -> add into main_retriever's vectordb."""
-    link_keyword = chain_keyword.invoke({"question": question}).content
-    link_docs = link_retriever.invoke(link_keyword)
-    
-    # Extract the URL from metadata rather than the plain page_content text
-    retrieved_urls = [
-        doc.metadata.get("url") 
-        for doc in link_docs 
-        if doc.metadata.get("url")
-    ]
+    """Same steps as the notebook: tags -> retrieve links -> filter new ones ->
+    scrape -> split -> add into main_retriever's vectordb."""
+    global retrieved_links
 
-    add_retrieved_urls(retrieved_urls)
+    retrieved_links = retrieved_question_links(question=question)
 
-    if url_to_be_searched:
-        # WebBaseLoader will now successfully receive a list of actual URL strings
-        docs = WebBaseLoader(url_to_be_searched).load()
+    new_urls = get_new_urls(retrieved_links, already_fetched_links)
+    already_fetched_links.extend(new_urls)
+
+    if new_urls:
+        docs = WebBaseLoader(new_urls).load()
         splitted_docs = splitter.split_documents(docs)
         if splitted_docs:
             vectordb.add_documents(splitted_docs)
-
-    mark_as_fetched()
 
 
 chain = (
@@ -138,8 +195,8 @@ chain = (
         "context": lambda x: main_retriever.invoke(x["question"]),
         "question": lambda x: x["question"],
         "history": lambda x: x["history"],
-        "already_visited": lambda x: list(already_fetched_urls),
-        "retrieved_links": lambda x: list(url_to_be_searched),
+        "already_visited": lambda x: list(retrieved_links),
+        "valid_params": lambda x: param_retriever.invoke(x["question"]),
     }
     | prompt2
     | llm
