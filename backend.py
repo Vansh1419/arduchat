@@ -410,6 +410,13 @@ retriever (kept SEPARATE from main_retriever, per requirements) that is
 used just to give the LLM a light-weight "recall" of older turns when the
 in-memory history list gets long. `main_retriever` itself remains the
 single retriever used for the whole app (the ArduPilot docs vector db).
+
+Memory-reduction changes (Railway 512MB limit):
+- All Chroma collections now share ONE chromadb.Client() instead of each
+  spinning up its own client/index machinery.
+- param_vectordb and history_vector_db are now built LAZILY on first use
+  instead of at import time, so startup memory stays lower and work is
+  spread out instead of all happening before the healthcheck.
 """
 
 import os
@@ -429,7 +436,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+import chromadb
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_groq.chat_models import ChatGroq
 from langchain_community.document_loaders import JSONLoader, WebBaseLoader
 from langchain_community.vectorstores import Chroma
@@ -455,9 +463,12 @@ llm = ChatGroq(
 )
 
 print("Loading embedding model...", flush=True)
-from langchain_community.embeddings import FastEmbedEmbeddings
-
 embedding = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+# single shared chromadb client - all collections live on this one client
+# instead of each Chroma(...) call creating its own client/index machinery
+print("Creating shared Chroma client...", flush=True)
+chroma_client = chromadb.Client()
 
 LINKS_JSON_PATH = "./web-crawller/links_result_deduped.json"
 
@@ -473,9 +484,14 @@ print("Building links_vector_db...", flush=True)
 links_vector_db = Chroma.from_documents(
     documents=json_data,
     embedding=embedding,
+    client=chroma_client,
+    collection_name="links",
 )
 link_retriever = links_vector_db.as_retriever()
 print("links_vector_db ready.", flush=True)
+
+# free the raw loaded doc list now that it's embedded into Chroma
+del json_data
 
 # --- tag extraction prompt/chain (replaces old loose keyword prompt) ---
 tags_prompt = PromptTemplate.from_template("""
@@ -557,24 +573,42 @@ splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 print("Setting up main_docs vectordb...", flush=True)
 # empty content vectordb, populated on-demand as pages are scraped.
 # `main_retriever` is the SINGLE retriever used for answering (docs' content, not links).
-vectordb = Chroma(collection_name="main_docs", embedding_function=embedding)
+vectordb = Chroma(
+    client=chroma_client,
+    collection_name="main_docs",
+    embedding_function=embedding,
+)
 main_retriever = vectordb.as_retriever()
 
 # --- parameter whitelist retriever (prevents the LLM from inventing param names) ---
+# LAZY: only fetched/built on first request that needs it, not at startup.
 PARAMETERS_URL = "https://ardupilot.org/copter/docs/parameters.html"
 
-print("Fetching ArduPilot parameters page...", flush=True)
-resp = requests.get(PARAMETERS_URL, timeout=15)
-resp.encoding = "utf-8"  # fixes the mojibake from wrong auto-detected encoding
-print("Fetched parameters page, parsing...", flush=True)
-soup = BeautifulSoup(resp.text, "html.parser")
-h3_tags = [h3.get_text(strip=True).replace("\u00b6", "").strip() for h3 in soup.find_all("h3")]
+_param_retriever = None
 
-param_docs = [Document(page_content=p) for p in h3_tags]
-print("Building param_vectordb...", flush=True)
-param_vectordb = Chroma.from_documents(param_docs, embedding=embedding)
-param_retriever = param_vectordb.as_retriever(search_kwargs={"k": 15})
-print("param_vectordb ready.", flush=True)
+
+def get_param_retriever():
+    global _param_retriever
+    if _param_retriever is None:
+        print("Fetching ArduPilot parameters page (lazy, first use)...", flush=True)
+        resp = requests.get(PARAMETERS_URL, timeout=15)
+        resp.encoding = "utf-8"  # fixes the mojibake from wrong auto-detected encoding
+        print("Fetched parameters page, parsing...", flush=True)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        h3_tags = [h3.get_text(strip=True).replace("\u00b6", "").strip() for h3 in soup.find_all("h3")]
+
+        param_docs = [Document(page_content=p) for p in h3_tags]
+        print("Building param_vectordb...", flush=True)
+        param_vectordb = Chroma.from_documents(
+            param_docs,
+            embedding=embedding,
+            client=chroma_client,
+            collection_name="params",
+        )
+        print("param_vectordb ready.", flush=True)
+        _param_retriever = param_vectordb.as_retriever(search_kwargs={"k": 15})
+    return _param_retriever
+
 
 prompt2 = ChatPromptTemplate.from_messages([
     ("system",
@@ -609,7 +643,7 @@ chain = (
         "question": lambda x: x["question"],
         "history": lambda x: x["history"],
         "already_visited": lambda x: list(retrieved_links),
-        "valid_params": lambda x: param_retriever.invoke(x["question"]),
+        "valid_params": lambda x: get_param_retriever().invoke(x["question"]),
     }
     | prompt2
     | llm
@@ -649,12 +683,21 @@ _init_db()
 
 # a small separate vectordb+retriever used only to store/search past
 # messages for a session (kept apart from main_retriever, as requested)
-print("Building history_vector_db...", flush=True)
-history_vector_db = Chroma(
-    collection_name="chat_history",
-    embedding_function=embedding,
-)
-print("history_vector_db ready.", flush=True)
+# LAZY: only built on first message save, not at startup.
+_history_vector_db = None
+
+
+def get_history_vector_db():
+    global _history_vector_db
+    if _history_vector_db is None:
+        print("Building history_vector_db (lazy, first use)...", flush=True)
+        _history_vector_db = Chroma(
+            client=chroma_client,
+            collection_name="chat_history",
+            embedding_function=embedding,
+        )
+        print("history_vector_db ready.", flush=True)
+    return _history_vector_db
 
 
 def _save_message(session_id: str, role: str, content: str):
@@ -666,7 +709,7 @@ def _save_message(session_id: str, role: str, content: str):
         conn.commit()
     try:
         from langchain_core.documents import Document
-        history_vector_db.add_documents([
+        get_history_vector_db().add_documents([
             Document(page_content=content, metadata={"session_id": session_id, "role": role})
         ])
     except Exception:
