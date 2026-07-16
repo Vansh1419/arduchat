@@ -421,6 +421,7 @@ Memory-reduction changes (Railway 512MB limit):
 
 import os
 import json
+import gc
 import sqlite3
 import uuid
 from contextlib import closing
@@ -436,10 +437,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import numpy as np
 import chromadb
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_groq.chat_models import ChatGroq
-from langchain_community.document_loaders import JSONLoader, WebBaseLoader
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.chat_history import InMemoryChatMessageHistory, BaseChatMessageHistory
@@ -451,8 +453,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 # CORE RAG LOGIC (ported from the updated notebook)
 # --------------------------------------------------------------------------
 
-import requests
-from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from langchain_core.documents import Document
 
@@ -473,25 +473,36 @@ chroma_client = chromadb.Client()
 LINKS_JSON_PATH = "./web-crawller/links_result_deduped.json"
 
 print("Loading links JSON...", flush=True)
-# link-only vectordb: page_content of each doc IS the url string
-json_data = JSONLoader(
-    LINKS_JSON_PATH,
-    jq_schema=".[]",
-    text_content=True,
-).load()
+with open(LINKS_JSON_PATH, "r", encoding="utf-8") as f:
+    _raw_links = json.load(f)
+link_texts = [str(x) for x in _raw_links]
+del _raw_links
 
-print("Building links_vector_db...", flush=True)
-links_vector_db = Chroma.from_documents(
-    documents=json_data,
-    embedding=embedding,
-    client=chroma_client,
-    collection_name="links",
-)
-link_retriever = links_vector_db.as_retriever()
-print("links_vector_db ready.", flush=True)
+# links are static (930 short url strings) and never change at runtime, so we
+# skip chromadb/hnswlib entirely here and keep a plain numpy cosine-similarity
+# index instead - this avoids instantiating a whole extra vector collection
+# for something this small, which is real RAM savings on a tight memory cap.
+print("Embedding links (numpy index, no chromadb)...", flush=True)
+_link_embeddings = np.array(embedding.embed_documents(link_texts), dtype=np.float32)
+_link_norms = np.linalg.norm(_link_embeddings, axis=1, keepdims=True)
+_link_norms[_link_norms == 0] = 1e-8
+link_embeddings_normed = _link_embeddings / _link_norms
+del _link_embeddings, _link_norms
+gc.collect()
+print("links index ready.", flush=True)
 
-# free the raw loaded doc list now that it's embedded into Chroma
-del json_data
+
+def link_similarity_search(query, k=5):
+    """Returns list of (url, distance) sorted best-first. distance is
+    1 - cosine_similarity so lower is better, matching chroma's convention."""
+    q_emb = np.array(embedding.embed_query(query), dtype=np.float32)
+    q_norm = np.linalg.norm(q_emb)
+    if q_norm == 0:
+        q_norm = 1e-8
+    q_normed = q_emb / q_norm
+    sims = link_embeddings_normed @ q_normed
+    top_idx = np.argsort(-sims)[:k]
+    return [(link_texts[i], float(1 - sims[i])) for i in top_idx]
 
 # --- tag extraction prompt/chain (replaces old loose keyword prompt) ---
 tags_prompt = PromptTemplate.from_template("""
@@ -525,22 +536,21 @@ def weighted_query(tags):
 
 
 def retrieved_question_links(question, decay=0.5):
-    """tags -> decayed similarity search against link_retriever -> ranked url docs."""
+    """tags -> decayed similarity search against the links numpy index -> ranked urls."""
     tags_msg = tags_chain.invoke(question)
     tags = eval(tags_msg.content) if hasattr(tags_msg, "content") else tags_msg
 
-    scored_docs = {}
+    scored_urls = {}
     for i, tag in enumerate(tags):
         weight = decay ** i  # 1.0, 0.5, 0.25, ...
-        results = link_retriever.vectorstore.similarity_search_with_score(tag, k=5)
-        for doc, score in results:
-            key = doc.page_content  # the url
+        results = link_similarity_search(tag, k=5)
+        for url, score in results:
             weighted_score = score * (1 / weight) if weight else score
-            if key not in scored_docs or weighted_score < scored_docs[key][1]:
-                scored_docs[key] = (doc, weighted_score)
+            if url not in scored_urls or weighted_score < scored_urls[url]:
+                scored_urls[url] = weighted_score
 
-    ranked = sorted(scored_docs.values(), key=lambda x: x[1])
-    return [doc for doc, _ in ranked]
+    ranked = sorted(scored_urls.items(), key=lambda x: x[1])
+    return [url for url, _ in ranked]
 
 
 def _is_valid_url(value: str) -> bool:
@@ -551,14 +561,13 @@ def _is_valid_url(value: str) -> bool:
         return False
 
 
-def get_new_urls(retrieved_docs, already_fetched_links):
+def get_new_urls(retrieved_urls, already_fetched_links):
     seen = set(already_fetched_links)
     final_urls_for_data_loading = []
-    for doc in retrieved_docs:
-        url = doc.page_content
-        # link_retriever's vectordb can contain non-url text (titles, snippets,
-        # bad rows in links_result_deduped.json) — skip anything that isn't
-        # actually a fetchable http(s) url instead of crashing WebBaseLoader.
+    for url in retrieved_urls:
+        # links_result_deduped.json can contain non-url text (titles, snippets,
+        # bad rows) — skip anything that isn't actually a fetchable http(s)
+        # url instead of crashing WebBaseLoader.
         if url and _is_valid_url(url) and url not in seen:
             final_urls_for_data_loading.append(url)
             seen.add(url)
@@ -590,6 +599,9 @@ _param_retriever = None
 def get_param_retriever():
     global _param_retriever
     if _param_retriever is None:
+        import requests
+        from bs4 import BeautifulSoup
+
         print("Fetching ArduPilot parameters page (lazy, first use)...", flush=True)
         resp = requests.get(PARAMETERS_URL, timeout=15)
         resp.encoding = "utf-8"  # fixes the mojibake from wrong auto-detected encoding
@@ -607,6 +619,7 @@ def get_param_retriever():
         )
         print("param_vectordb ready.", flush=True)
         _param_retriever = param_vectordb.as_retriever(search_kwargs={"k": 15})
+        gc.collect()
     return _param_retriever
 
 
@@ -697,6 +710,7 @@ def get_history_vector_db():
             embedding_function=embedding,
         )
         print("history_vector_db ready.", flush=True)
+        gc.collect()
     return _history_vector_db
 
 
