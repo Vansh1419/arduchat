@@ -455,9 +455,9 @@ llm = ChatGroq(
 )
 
 print("Loading embedding model...", flush=True)
-embedding = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+from langchain_community.embeddings import FastEmbedEmbeddings
+
+embedding = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 LINKS_JSON_PATH = "./web-crawller/links_result_deduped.json"
 

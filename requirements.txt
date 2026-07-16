@@ -5,7 +5,6 @@ requests
 langchain
 langchain-huggingface
 langchain-groq
-sentence-transformers
 langchain-core
 langchain-community
 jq
@@ -14,3 +13,4 @@ fastapi
 uvicorn
 streamlit
 langchain-text-splitters
+fastembed
