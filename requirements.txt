@@ -14,3 +14,4 @@ uvicorn
 streamlit
 langchain-text-splitters
 fastembed
+sentence-transformers
