@@ -9,4 +9,4 @@ wheels/
 # Virtual environments
 .venv
 .env
-src/chat_history.db
+chat_history.db
