@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-ArduChat: a RAG chat assistant for the ArduPilot Copter docs (https://ardupilot.org/copter/docs/). A stateless FastAPI backend (`app/`) streams answers over SSE and also serves the built React SPA (`web/`). Chat history lives only in the browser (localStorage); the server stores nothing. See `new_readme.md` for the full write-up, `decision.md` for the reasoning behind choices (D1…), and `steps.md` for the work log.
+ArduChat: a RAG chat assistant for the ArduPilot Copter docs (https://ardupilot.org/copter/docs/). A stateless FastAPI backend (`app/`) streams answers over SSE and also serves the built React SPA (`web/`). Chat history lives only in the browser (localStorage); the server stores nothing. See `README.md` for the full write-up, `decision.md` for the reasoning behind choices (D1…), and `steps.md` for the work log.
 
 ## Commands
 
@@ -41,7 +41,7 @@ Request path in `app/main.py` (`POST /chat`), order matters: per-IP rate limit �
 
 - Run exactly **one uvicorn worker / one instance**: rate limiter and token budgets are in-process memory. No server-side sessions or DB.
 - No LangChain/torch/Chroma at runtime (image must fit the small Railway tier); runtime deps are the `[project] dependencies` only, other tooling is in `build`/`dev` dependency groups.
-- Client IP uses `X-Real-IP` with socket fallback (`client_ip` in `guardrails.py`); spoofability on Railway was still to be verified.
+- Client IP uses the `CLIENT_IP_HEADER` header (default `x-real-ip`; `true-client-ip` on Render) with socket fallback (`client_ip` in `guardrails.py`); spoofability on each platform is still to be verified.
 - No CORS middleware: SPA and API share an origin.
-- Deploy: `Dockerfile` (stage 1 builds the web app, stage 2 bakes the embedding model into the image) + `railway.json` (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
-- `README.md` is stale (describes the old Streamlit/Chroma/SQLite stack that was removed); `new_readme.md` reflects the current system.
+- Deploy: `Dockerfile` (stage 1 builds the web app, stage 2 bakes the embedding model into the image) + `railway.json` / `render.yaml` / the README header for Hugging Face Spaces (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
+- `README.md` is the current write-up and carries the Hugging Face Spaces YAML header (`sdk: docker`, `app_port: 8000`); keep that header when editing.
