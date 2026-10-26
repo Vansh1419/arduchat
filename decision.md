@@ -149,6 +149,8 @@ Each entry: what was decided, the alternatives, and why. Newest at the bottom.
 3. No unnecessary abstraction.
 4. Log steps in steps.md, decisions in decision.md, flows in flow.md.
 
+## D53 — Split deployment (user): backend as a manually created Render Web Service (Docker, Starter+ for memory), frontend on Vercel (root `web`). Backend gets opt-in CORS (`CORS_ORIGINS`, exposes `Retry-After`), frontend reads `VITE_API_URL` at build time, and the Dockerfile is API-only. Client IP header is configurable (`CLIENT_IP_HEADER`); Render's `true-client-ip` is unverified.
+
 ## Open (not yet decided)
 - LLM model (keep Groq qwen/qwen3-32b?)
 - Railway plan limits (RAM/storage)

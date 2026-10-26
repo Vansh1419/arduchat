@@ -144,11 +144,41 @@ Raise the budgets for this run, otherwise the app-wide budget rejects most reque
 
 ## Deploy (backend on Render, frontend on Vercel)
 
-**Backend (Render web service):** New → Blueprint, pick this repo (`render.yaml`: Docker build, `/health` check, one instance). Set `GROQ_API_KEY` and `CORS_ORIGINS` (the Vercel origin, e.g. `https://arduchat.vercel.app`, no trailing slash; comma-separate several). `CLIENT_IP_HEADER` is preset to `true-client-ip`; verify it after deploy by sending a fake header and checking the rate limit still applies per real client. The image contains the API only.
+### 1. Backend: Render Web Service
 
-**Frontend (Vercel):** import the repo, set **Root Directory** to `web`, framework Vite (build `npm run build`, output `dist`). Add the environment variable `VITE_API_URL` = the Render URL (no trailing slash), then redeploy; it is baked in at build time. The browser calls Render directly, so SSE does not pass through Vercel.
+Dashboard → **New → Web Service** (created by hand; `render.yaml` is an optional Blueprint and is not needed).
 
-For local single-process use, `cd web && npm run build` and run uvicorn: FastAPI still serves `web/dist` at `/` when it exists, and with `CORS_ORIGINS` unset no CORS is applied.
+1. Connect GitHub, choose this repo, branch `master`.
+2. **Language:** Docker. **Dockerfile Path:** `./Dockerfile`. **Root Directory:** blank. Pick the region closest to your users.
+3. **Instance Type:** Starter or larger. The free 512 MB tier will probably run out of memory with the embedding model loaded (about 400 MB RSS locally).
+4. **Environment Variables:**
+   - `GROQ_API_KEY`: your Groq key.
+   - `CORS_ORIGINS`: the Vercel URL, no trailing slash (comma-separate several). Use a placeholder first and update it after step 2.
+   - `CLIENT_IP_HEADER`: `true-client-ip` (unverified guess, see step 3).
+   - `PORT` is injected by Render and read by the Dockerfile.
+5. **Advanced:** Health Check Path `/health`; keep **Instances** at 1 and do not enable autoscaling (the rate limiter and token budgets are in-process memory).
+6. Create the service. After the build, `<render-url>/health` should return `{"status":"ok","chunks":4226}`.
+
+The image contains the API only.
+
+### 2. Frontend: Vercel
+
+1. vercel.com → **Add New… → Project**, import this repo.
+2. **Framework Preset:** Vite. **Root Directory:** `web`. Leave the build command (`npm run build`) and output directory (`dist`) at their defaults.
+3. **Environment Variables:** `VITE_API_URL` = the Render URL (no trailing slash, no `/health`).
+4. Deploy. `VITE_API_URL` is baked in at build time, so if you add or change it later, go to Deployments → **⋯ → Redeploy**.
+
+The browser calls Render directly, so SSE does not pass through Vercel.
+
+### 3. Link them and verify
+
+1. Copy the Vercel production URL and set it as `CORS_ORIGINS` in Render (Environment tab; Render redeploys).
+2. Open the Vercel URL and send a message. A CORS error in the browser's Network tab means `CORS_ORIGINS` does not match the URL exactly (scheme, host, no trailing slash). Vercel preview deployments have different URLs and are not in `CORS_ORIGINS`, so test on the production URL.
+3. Spoof check: send a request with a fake `True-Client-IP` header and confirm the rate limit still applies per real client. If the header can be overridden, change `client_ip` in `app/guardrails.py` or use another header.
+
+### Local single process
+
+`cd web && npm run build` and run uvicorn: FastAPI serves `web/dist` at `/` when it exists, and with `CORS_ORIGINS` unset no CORS is applied.
 
 ## Deploy (Railway)
 

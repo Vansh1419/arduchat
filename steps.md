@@ -86,3 +86,5 @@ Chronological log of work done. Nothing is committed (ground rule).
 - [ ] Post-deploy X-Real-IP spoof check (needs a deployed instance).
 - [x] Implemented D50 (Retry-After passthrough, `GROQ_TOKENS_PER_DAY` budget with `seconds_until_fits`, UI wait formatting), D51 (TOP_K=3, `max_completion_tokens`=1000, truncated note) and D52 (`EVAL_SUBSET`). Test fix: my daily-budget test had wrong arithmetic (code was right). 110 fast tests pass; frontend rebuilt.
 - [ ] Run `EVAL_SUBSET=1 pytest evals -m slow -s` after the Groq daily quota resets (rolling 24 h; do not call Groq before).
+- [x] Deploy plan changed (D53): HF Docker Spaces turned out to be paid; Koyeb free tier (512 MB, ~0.1 vCPU) judged too tight; final choice is backend on Render + frontend on Vercel. Added `CORS_ORIGINS`, `VITE_API_URL`, `CLIENT_IP_HEADER`, API-only Dockerfile, `render.yaml` (optional), `web/.env.example`; README has the dashboard steps. CORS checked locally with TestClient (allowed origin, rejected origin, `Retry-After` exposed).
+- [ ] Deploy on Render and Vercel, then run the `True-Client-IP` spoof check and a chat from the Vercel origin.
