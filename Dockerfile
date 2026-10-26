@@ -32,5 +32,5 @@ RUN useradd --system --no-create-home app && chown -R app /app
 USER app
 
 EXPOSE 8000
-# Railway sets $PORT; GROQ_API_KEY (and optionally GROQ_MODEL) come from its environment variables
+# Railway/Render set $PORT; GROQ_API_KEY (and optionally GROQ_MODEL, CLIENT_IP_HEADER) come from environment variables
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

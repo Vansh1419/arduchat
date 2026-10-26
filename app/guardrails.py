@@ -5,7 +5,7 @@ from collections import deque
 
 from fastapi import Request
 
-from app.config import GROQ_TOKENS_PER_DAY, GROQ_TOKENS_PER_MINUTE
+from app.config import CLIENT_IP_HEADER, GROQ_TOKENS_PER_DAY, GROQ_TOKENS_PER_MINUTE
 
 GROUNDING_THRESHOLD = 0.65  # provisional, tune in the evals
 MAX_HISTORY_CHARS = 8000
@@ -76,7 +76,7 @@ _spent: deque[tuple[float, int]] = deque()  # (time, estimated tokens) of admitt
 
 
 def client_ip(request: Request) -> str:
-    return request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+    return request.headers.get(CLIENT_IP_HEADER) or (request.client.host if request.client else "unknown")
 
 
 def rate_limited(ip: str) -> int | None:

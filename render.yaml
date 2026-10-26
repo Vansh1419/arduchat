@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: arduchat
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter # the free plan has 512 MB RAM; the app needs ~400 MB plus container overhead
+    healthCheckPath: /health
+    numInstances: 1 # rate limiter and token budgets are in-process memory
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false # set in the Render dashboard
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
