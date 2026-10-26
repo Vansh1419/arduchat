@@ -1,13 +1,3 @@
----
-title: ArduChat
-emoji: 🚁
-colorFrom: blue
-colorTo: gray
-sdk: docker
-app_port: 8000
-pinned: false
----
-
 # ArduChat — ArduPilot Copter documentation assistant
 
 ArduChat answers questions about **ArduPilot Copter** using the official docs at <https://ardupilot.org/copter/docs/>. Every answer is grounded in retrieved documentation excerpts and comes with source links.
@@ -17,7 +7,7 @@ ArduChat answers questions about **ArduPilot Copter** using the official docs at
 - **Retrieval:** a read-only index shipped in the repo (`data/`): dense search (fastembed `BAAI/bge-small-en-v1.5`) fused with BM25 by reciprocal rank fusion
 - **LLM:** Groq, default `openai/gpt-oss-20b` (set `GROQ_MODEL` to change)
 - **Chat history:** kept in the user's browser (localStorage); the server stores nothing
-- **Deploy:** one Docker image (`Dockerfile`) on Hugging Face Spaces, Render (`render.yaml`) or Railway (`railway.json`)
+- **Deploy:** one Docker image (`Dockerfile`) on Koyeb, Render (`render.yaml`) or Railway (`railway.json`)
 
 ## How a request flows
 
@@ -100,7 +90,7 @@ Only `GROQ_API_KEY` is required.
 | `GROQ_TIMEOUT`, `GROQ_MAX_RETRIES` | `30`, `2` | Groq client |
 | `GROQ_BASE_URL` | Groq | point at `loadtest/fake_groq.py` for load tests |
 | `DATA_DIR` | `data` | which index to load |
-| `PORT` | `8000` | set by Railway/Render; on Hugging Face the app listens on 8000 (`app_port` in the README header) |
+| `PORT` | `8000` | set by Railway/Render |
 | `CLIENT_IP_HEADER` | `x-real-ip` | header carrying the real client IP (Render: `true-client-ip`) |
 
 The two token budgets are in-process and per instance. After upgrading the Groq plan, raise both.
@@ -151,13 +141,11 @@ python loadtest/run.py --url http://localhost:8000 --users 50 --requests 2 --pid
 
 Raise the budgets for this run, otherwise the app-wide budget rejects most requests by design. Result on macOS with one worker: 10×3, 50×2 and 100×1 concurrent users all succeeded, time-to-first-token p95 under 0.3 s, peak RSS about 396 MB with no growth.
 
-## Deploy (Hugging Face Spaces)
+## Deploy (Koyeb)
 
-The YAML header at the top of this file configures a Docker Space (`sdk: docker`, `app_port: 8000`).
-
-1. Create a Docker Space and push this repo to its git remote (`git push space master:main`).
-2. Add `GROQ_API_KEY` under Settings → Variables and secrets (as a secret). Set `CLIENT_IP_HEADER` to the header HF's proxy uses for the client IP, after checking it.
-3. Share the direct URL `https://<user>-<space>.hf.space`, not the Space page (which wraps the app in an iframe).
+1. In the Koyeb dashboard create a **Web Service** from GitHub, pick this repo, and choose the **Dockerfile** builder. Select the free instance, set the exposed port to 8000 and the health check path to `/health`.
+2. Add `GROQ_API_KEY` as a secret. Keep one instance (scale 1/1).
+3. The free instance has 512 MB RAM and a fraction of a vCPU, and scales to zero after idling, so the first request after a pause reloads the model. After deploy, check which header carries the client IP and set `CLIENT_IP_HEADER` accordingly.
 
 ## Deploy (Railway)
 

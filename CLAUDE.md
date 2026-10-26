@@ -43,5 +43,5 @@ Request path in `app/main.py` (`POST /chat`), order matters: per-IP rate limit â
 - No LangChain/torch/Chroma at runtime (image must fit the small Railway tier); runtime deps are the `[project] dependencies` only, other tooling is in `build`/`dev` dependency groups.
 - Client IP uses the `CLIENT_IP_HEADER` header (default `x-real-ip`; `true-client-ip` on Render) with socket fallback (`client_ip` in `guardrails.py`); spoofability on each platform is still to be verified.
 - No CORS middleware: SPA and API share an origin.
-- Deploy: `Dockerfile` (stage 1 builds the web app, stage 2 bakes the embedding model into the image) + `railway.json` / `render.yaml` / the README header for Hugging Face Spaces (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
-- `README.md` is the current write-up and carries the Hugging Face Spaces YAML header (`sdk: docker`, `app_port: 8000`); keep that header when editing.
+- Deploy: `Dockerfile` (stage 1 builds the web app, stage 2 bakes the embedding model into the image) + `railway.json` / `render.yaml` / Koyeb dashboard config (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
+- `README.md` is the current write-up (deploy sections for Koyeb, Render and Railway).
