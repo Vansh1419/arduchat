@@ -3,11 +3,11 @@
 ArduChat answers questions about **ArduPilot Copter** using the official docs at <https://ardupilot.org/copter/docs/>. Every answer is grounded in retrieved documentation excerpts and comes with source links.
 
 - **Backend:** FastAPI, one process, stateless (`app/`)
-- **Frontend:** React + TypeScript + Tailwind SPA (`web/`), served by the same FastAPI process
+- **Frontend:** React + TypeScript + Tailwind SPA (`web/`), deployed on Vercel (or served by the same FastAPI process locally)
 - **Retrieval:** a read-only index shipped in the repo (`data/`): dense search (fastembed `BAAI/bge-small-en-v1.5`) fused with BM25 by reciprocal rank fusion
 - **LLM:** Groq, default `openai/gpt-oss-20b` (set `GROQ_MODEL` to change)
 - **Chat history:** kept in the user's browser (localStorage); the server stores nothing
-- **Deploy:** one Docker image (`Dockerfile`) on Koyeb, Render (`render.yaml`) or Railway (`railway.json`)
+- **Deploy:** one Docker image (`Dockerfile`) backend on Render (`render.yaml`) and frontend on Vercel (or everything in one container on Railway)
 
 ## How a request flows
 
@@ -91,6 +91,7 @@ Only `GROQ_API_KEY` is required.
 | `GROQ_BASE_URL` | Groq | point at `loadtest/fake_groq.py` for load tests |
 | `DATA_DIR` | `data` | which index to load |
 | `PORT` | `8000` | set by Railway/Render |
+| `CORS_ORIGINS` | empty | allowed browser origins when the SPA is on another host (Vercel) |
 | `CLIENT_IP_HEADER` | `x-real-ip` | header carrying the real client IP (Render: `true-client-ip`) |
 
 The two token budgets are in-process and per instance. After upgrading the Groq plan, raise both.
@@ -141,11 +142,13 @@ python loadtest/run.py --url http://localhost:8000 --users 50 --requests 2 --pid
 
 Raise the budgets for this run, otherwise the app-wide budget rejects most requests by design. Result on macOS with one worker: 10×3, 50×2 and 100×1 concurrent users all succeeded, time-to-first-token p95 under 0.3 s, peak RSS about 396 MB with no growth.
 
-## Deploy (Koyeb)
+## Deploy (backend on Render, frontend on Vercel)
 
-1. In the Koyeb dashboard create a **Web Service** from GitHub, pick this repo, and choose the **Dockerfile** builder. Select the free instance, set the exposed port to 8000 and the health check path to `/health`.
-2. Add `GROQ_API_KEY` as a secret. Keep one instance (scale 1/1).
-3. The free instance has 512 MB RAM and a fraction of a vCPU, and scales to zero after idling, so the first request after a pause reloads the model. After deploy, check which header carries the client IP and set `CLIENT_IP_HEADER` accordingly.
+**Backend (Render web service):** New → Blueprint, pick this repo (`render.yaml`: Docker build, `/health` check, one instance). Set `GROQ_API_KEY` and `CORS_ORIGINS` (the Vercel origin, e.g. `https://arduchat.vercel.app`, no trailing slash; comma-separate several). `CLIENT_IP_HEADER` is preset to `true-client-ip`; verify it after deploy by sending a fake header and checking the rate limit still applies per real client. The image contains the API only.
+
+**Frontend (Vercel):** import the repo, set **Root Directory** to `web`, framework Vite (build `npm run build`, output `dist`). Add the environment variable `VITE_API_URL` = the Render URL (no trailing slash), then redeploy; it is baked in at build time. The browser calls Render directly, so SSE does not pass through Vercel.
+
+For local single-process use, `cd web && npm run build` and run uvicorn: FastAPI still serves `web/dist` at `/` when it exists, and with `CORS_ORIGINS` unset no CORS is applied.
 
 ## Deploy (Railway)
 

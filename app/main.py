@@ -5,10 +5,12 @@ from pathlib import Path
 
 import groq
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import index
+from app.config import CORS_ORIGINS
 from app.chat import ChatRequest, answer_events, build_messages, refusal_events, retrieval_query, start_stream
 from app.guardrails import client_ip, is_injection, rate_limited, token_budget_wait, trim_history, weak_retrieval
 
@@ -20,6 +22,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ArduChat API", lifespan=lifespan)
+
+if CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_methods=["POST", "GET"],
+        allow_headers=["Content-Type"],
+        expose_headers=["Retry-After"],  # the UI shows the wait from 429/503 responses
+    )
 
 
 @app.get("/health")

@@ -42,6 +42,6 @@ Request path in `app/main.py` (`POST /chat`), order matters: per-IP rate limit â
 - Run exactly **one uvicorn worker / one instance**: rate limiter and token budgets are in-process memory. No server-side sessions or DB.
 - No LangChain/torch/Chroma at runtime (image must fit the small Railway tier); runtime deps are the `[project] dependencies` only, other tooling is in `build`/`dev` dependency groups.
 - Client IP uses the `CLIENT_IP_HEADER` header (default `x-real-ip`; `true-client-ip` on Render) with socket fallback (`client_ip` in `guardrails.py`); spoofability on each platform is still to be verified.
-- No CORS middleware: SPA and API share an origin.
-- Deploy: `Dockerfile` (stage 1 builds the web app, stage 2 bakes the embedding model into the image) + `railway.json` / `render.yaml` / Koyeb dashboard config (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
-- `README.md` is the current write-up (deploy sections for Koyeb, Render and Railway).
+- CORS is off unless `CORS_ORIGINS` is set (SPA on Vercel calls the Render API via build-time `VITE_API_URL`); locally the SPA and API share an origin.
+- Deploy: `Dockerfile` (backend only; bakes the embedding model into the image; the SPA is deployed separately on Vercel) + `railway.json` / `render.yaml` (backend); Vercel project with root `web` (`/health` healthcheck). Only `data/chunks.jsonl`, `embeddings.npy`, `params.json` are copied into the image.
+- `README.md` is the current write-up (deploy sections for Render + Vercel and Railway).

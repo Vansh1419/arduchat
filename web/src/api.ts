@@ -1,5 +1,8 @@
 import type { Source } from "./types";
 
+// Backend origin when the SPA is hosted separately (VITE_API_URL at build time); empty = same origin.
+const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? "").replace(/\/$/, "");
+
 // Server limits (app/chat.py): history turn <= 4000 chars, <= 10 turns.
 const MAX_TURN_CHARS = 4000;
 const MAX_TURNS = 10;
@@ -44,7 +47,7 @@ async function httpErrorMessage(res: Response): Promise<string> {
 export async function streamChat(message: string, history: Turn[], h: StreamHandlers): Promise<void> {
   let res: Response;
   try {
-    res = await fetch("/chat", {
+    res = await fetch(`${API_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, history: toHistory(history) }),

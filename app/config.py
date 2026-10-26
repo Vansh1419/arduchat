@@ -24,6 +24,10 @@ DATA_DIR = os.getenv("DATA_DIR", "data")
 # Header the platform proxy uses to pass the real client IP (Railway: x-real-ip; Render: true-client-ip).
 CLIENT_IP_HEADER = os.getenv("CLIENT_IP_HEADER", "x-real-ip").lower()
 
+# Comma-separated browser origins allowed to call the API when the frontend is hosted elsewhere (e.g. Vercel).
+# Empty = no CORS (the SPA is served from the same origin).
+CORS_ORIGINS = [o.strip().rstrip("/") for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+
 # 3 chunks save ~450 tokens/chat vs 5, at the cost of hit@k 1.00 -> 0.95 (geofence, dshot lose their page). User's call.
 TOP_K = 3
 HISTORY_TURNS_IN_QUERY = 2  # previous user messages folded into the retrieval query

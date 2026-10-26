@@ -11,3 +11,5 @@ services:
         sync: false # set in the Render dashboard
       - key: CLIENT_IP_HEADER
         value: true-client-ip
+      - key: CORS_ORIGINS
+        sync: false # the Vercel frontend origin, e.g. https://arduchat.vercel.app

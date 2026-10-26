@@ -1,12 +1,4 @@
-# Stage 1: build the React app
-FROM node:24-slim AS web
-WORKDIR /web
-COPY web/package.json web/package-lock.json ./
-RUN npm ci
-COPY web/ ./
-RUN npm run build
-
-# Stage 2: runtime (one uvicorn worker; the embedding model and index live in this process)
+# Backend only (the React app is deployed separately, e.g. on Vercel). One uvicorn worker; the embedding model and index live in this process)
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.11.27 /uv /usr/local/bin/uv
 
@@ -26,11 +18,10 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-smal
 
 COPY app ./app
 COPY data/chunks.jsonl data/embeddings.npy data/params.json ./data/
-COPY --from=web /web/dist ./web/dist
 
 RUN useradd --system --no-create-home app && chown -R app /app
 USER app
 
 EXPOSE 8000
-# Railway/Render set $PORT; GROQ_API_KEY (and optionally GROQ_MODEL, CLIENT_IP_HEADER) come from environment variables
+# Railway/Render set $PORT; GROQ_API_KEY (and optionally GROQ_MODEL, CLIENT_IP_HEADER, CORS_ORIGINS) come from environment variables
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
