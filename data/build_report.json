@@ -1,0 +1,216 @@
+{
+  "model": "BAAI/bge-small-en-v1.5",
+  "title_prepended": true,
+  "urls_in_list": 931,
+  "pages_indexed": 839,
+  "chunks": 4226,
+  "params": 5699,
+  "failed": [
+    {
+      "url": "https://ardupilot.org/copter/docs/common-pocketbeagle-2.html",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-smart-battery-solo.html",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/ekf-inav-failsafe.html",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/* requires `LUA Scripting <common-lua-scripts> be setup and `LUA driver <https:/github.com/ArduPilot/ardupilot/blob/master/libraries/AP_Scripting/drivers/UltraMotion.lua>`__ used.",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/autotrim",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/NarinFC_X3_Dimensions",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/NarinFC_X3_Introduction",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/nan",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/banggood.com/20x20mm-Holybro-KAKUTE-F7-Mini-Flight-Controller-with-Barometer-2-6S-for-RC-Drone-FPV-Racing-p-1449223.html",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-camera-control-board",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-rally-points",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-relay",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/firmware.ardupilot.org",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/custom.ardupilot.org",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-frsky-yaapu",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/doc.cuav.com",
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/www.DJI.com",
+      "error": "HTTP 404"
+    }
+  ],
+  "no_article_body": [
+    "https://ardupilot.org/copter/docs"
+  ],
+  "excluded": [
+    "https://ardupilot.org/copter/docs/binary-features.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.3.8.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.5.5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.5.6-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.5.6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.5.7-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.5.7.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0-beta6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.1-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.2-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.2-beta2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.3-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.6.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-beta-V4.7.0-beta7.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.7.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.0.8.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.1.5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.2.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.2.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.2.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.2.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.7.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.3.8.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.4.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.4.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.4.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.4.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.4.4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.3.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.4.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.5.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.6.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.7.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.6.0.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.6.1.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.6.2.html",
+    "https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.6.3.html"
+  ],
+  "capped": [
+    {
+      "url": "https://ardupilot.org/copter/docs/ArduCopter_MAVLink_Messages.html",
+      "chunks": 42
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/advanced-multicopter-design.html",
+      "chunks": 42
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-mavlink-mission-command-messages-mav_cmd.html",
+      "chunks": 50
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/logmessages.html",
+      "chunks": 154
+    }
+  ],
+  "largest_pages": [
+    [
+      "https://ardupilot.org/copter/docs/ArduCopter_MAVLink_Messages.html",
+      40
+    ],
+    [
+      "https://ardupilot.org/copter/docs/advanced-multicopter-design.html",
+      40
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-mavlink-mission-command-messages-mav_cmd.html",
+      40
+    ],
+    [
+      "https://ardupilot.org/copter/docs/logmessages.html",
+      40
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-lua-scripts.html",
+      37
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-prearm-safety-checks.html",
+      37
+    ],
+    [
+      "https://ardupilot.org/copter/docs/troubleshooting.html",
+      31
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-3dr-radio-advanced-configuration-and-technical-information.html",
+      30
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-auxiliary-functions.html",
+      26
+    ],
+    [
+      "https://ardupilot.org/copter/docs/common-chdk-camera-control-tutorial.html",
+      26
+    ]
+  ]
+}

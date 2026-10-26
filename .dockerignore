@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+.env.*
+**/__pycache__
+**/.DS_Store
+data/cache
+evals
+scripts
+web/node_modules
+web/dist
+*.md

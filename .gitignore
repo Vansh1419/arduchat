@@ -11,3 +11,12 @@ wheels/
 .env
 chat_history.db
 src/chat_history.db
+# index builder cache
+data/cache/
+
+# web frontend
+web/node_modules/
+web/dist/
+
+# eval outputs
+evals/results/
