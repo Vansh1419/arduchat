@@ -152,7 +152,7 @@ For local single-process use, `cd web && npm run build` and run uvicorn: FastAPI
 
 ## Deploy (Railway)
 
-1. Connect the repo; Railway builds the `Dockerfile` (stage 1 builds the React app, stage 2 runs one uvicorn worker as a non-root user with the embedding model baked in).
+1. Connect the repo; Railway builds the `Dockerfile` (API only: one uvicorn worker as a non-root user with the embedding model baked in; host the SPA on Vercel and set `CORS_ORIGINS`).
 2. Set `GROQ_API_KEY` (and optionally `GROQ_MODEL`) in the service variables. `railway.json` sets the `/health` healthcheck.
 3. After the first deploy, confirm that a client-supplied `X-Real-IP` header does not override the real client address: send requests with a fake header and check that the rate limit still applies per real client. If it is overridable, change `client_ip` in `app/guardrails.py`.
 
